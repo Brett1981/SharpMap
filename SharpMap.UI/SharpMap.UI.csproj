@@ -84,6 +84,8 @@
     <Compile Include="Forms\MiniMapControl.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Include="Forms\ImageGenerator\IMapBoxImageGenerator.cs" />
+    <Compile Include="Forms\ImageGenerator\LegacyMapImageRenderer.cs" />
     <Compile Include="Forms\ToolBar\MapDigitizeGeometriesToolStrip.cs">
       <SubType>Component</SubType>
     </Compile>
@@ -99,6 +101,7 @@
     <Compile Include="Forms\ToolBar\MapZoomToolStrip.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Include="Forms\Tools\FeatureEditorTool.cs" />
     <Compile Include="Forms\Tools\IMapTool.cs" />
     <Compile Include="Forms\Tools\MapTool.cs" />
     <Compile Include="Forms\WktGeometryCreator.cs">

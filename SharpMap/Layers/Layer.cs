@@ -61,7 +61,8 @@ namespace SharpMap.Layers
         protected virtual void OnSridChanged(EventArgs eventArgs)
         {
             _sourceFactory = GeoAPI.GeometryServiceProvider.Instance.CreateGeometryFactory(SRID);
-
+            if (!_shouldNotResetCt)
+                _coordinateTransform = _reverseCoordinateTransform = null;
             var handler = SRIDChanged;
             if (handler!= null) handler(this, eventArgs);
         }
@@ -104,10 +105,12 @@ namespace SharpMap.Layers
         private IGeometryFactory _targetFactory;
 
         private string _layerName;
+        private string _layerTitle;
         private IStyle _style;
         private int _srid = -1;
         private int? _targetSrid;
-
+        [field:NonSerialized]
+        private bool _shouldNotResetCt;
 // ReSharper disable PublicConstructorInAbstractClass
         ///<summary>
         /// Creates an instance of this class using the given Style
@@ -145,7 +148,16 @@ namespace SharpMap.Layers
         /// </summary>
         public virtual ICoordinateTransformation CoordinateTransformation
         {
-            get { return _coordinateTransform; }
+            get
+            {
+                if (_coordinateTransform == null && NeedsTransformation)
+                {
+                    var css = Session.Instance.CoordinateSystemServices;
+                    _coordinateTransform = css.CreateTransformation(
+                        css.GetCoordinateSystem(SRID), css.GetCoordinateSystem(TargetSRID));
+                }
+                return _coordinateTransform;
+            }
             set
             {
                 if (value == _coordinateTransform)
@@ -171,8 +183,18 @@ namespace SharpMap.Layers
 
             if (CoordinateTransformation != null)
             {
-                SRID = Convert.ToInt32(CoordinateTransformation.SourceCS.AuthorityCode);
-                TargetSRID = Convert.ToInt32(CoordinateTransformation.TargetCS.AuthorityCode);
+                // we don't want that by setting SRID we get the CoordinateTransformation resetted
+                _shouldNotResetCt = true;
+                try
+                {
+                    SRID = Convert.ToInt32(CoordinateTransformation.SourceCS.AuthorityCode);
+                    TargetSRID = Convert.ToInt32(CoordinateTransformation.TargetCS.AuthorityCode);
+                }
+                finally
+                {
+                    _shouldNotResetCt = false;
+                }
+                
             }
 
             if (CoordinateTransformationChanged != null)
@@ -196,8 +218,22 @@ namespace SharpMap.Layers
         /// </summary>
         public virtual ICoordinateTransformation ReverseCoordinateTransformation
         {
-            get { return _reverseCoordinateTransform; }
+            get
+            {
+                if (_reverseCoordinateTransform == null && NeedsTransformation)
+                {
+                    var css = Session.Instance.CoordinateSystemServices;
+                    _reverseCoordinateTransform = css.CreateTransformation(
+                        css.GetCoordinateSystem(TargetSRID), css.GetCoordinateSystem(SRID));
+                }
+                return _reverseCoordinateTransform;
+            }
             set { _reverseCoordinateTransform= value; }
+        }
+
+        protected bool NeedsTransformation
+        {
+            get { return SRID != 0 && TargetSRID != 0 && SRID != TargetSRID; }
         }
 
         #region ILayer Members
@@ -209,6 +245,15 @@ namespace SharpMap.Layers
         {
             get { return _layerName; }
             set { _layerName = value; }
+        }
+
+        /// <summary>
+        /// Gets or sets the title of the layer
+        /// </summary>
+        public string LayerTitle
+        {
+            get { return _layerTitle; }
+            set { _layerTitle = value; }
         }
 
         /// <summary>
